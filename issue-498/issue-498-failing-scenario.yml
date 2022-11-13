@@ -1,0 +1,57 @@
+# ex: set filetype=yaml.ansible fenc=utf-8 expandtab ts=2 sw=2 :
+- hosts: nov20.ly.lan
+  gather_facts: no
+  become: yes
+  vars:
+
+    container1: &container1
+      name: container1
+      image: busybox
+      command: tail -f /dev/null
+
+    container2: &container2
+      name: container2
+      image: busybox
+      command: tail -f /dev/null
+      links:
+        - container1:container1
+
+  pre_tasks: # setup initial conditions
+
+    - name: CLEANUP - ensure container1 does not exist
+      tags: cleanup
+      docker_container:
+        <<: *container1
+        state: absent
+
+    - name: CLEANUP - ensure container2 does not exist
+      tags: cleanup
+      docker_container:
+        <<: *container2
+        state: absent
+
+    - name: SCENARIO SETUP - start container1
+      tags: setup
+      docker_container: *container1
+
+    - name: SCENARIO SETUP - start container2
+      tags: setup
+      docker_container: *container2
+
+    - name: SCENARIO SETUP - stops container2
+      tags: setup
+      docker_container:
+        <<: *container2
+        state: stopped
+
+    - name: SCENARIO SETUP - recreate container1
+      tags: setup
+      docker_container:
+        <<: *container1
+        recreate: yes
+
+  tasks: # the part that fails, given the initial conditions
+
+    - name: POSSIBLE BUG - start container2
+      tags: scenario
+      docker_container: *container2
